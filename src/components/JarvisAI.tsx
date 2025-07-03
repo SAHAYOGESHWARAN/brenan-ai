@@ -45,6 +45,9 @@ const defaultPlugins: JarvisPlugin[] = [
   },
 ];
 
+// Add your OpenAI API key here or use an environment variable
+const OPENAI_API_KEY = import.meta.env.VITE_OPENAI_API_KEY || "";
+
 const JarvisAI = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputMessage, setInputMessage] = useState('');
@@ -129,32 +132,41 @@ const JarvisAI = () => {
     setMessages([welcomeMessage]);
   }, []);
 
-  const simulateAIResponse = async (userMessage: string): Promise<string> => {
-    // Plugin system: run plugin if user asks for it
-    if (userMessage.toLowerCase().startsWith('plugin:')) {
-      const [_, pluginId, ...rest] = userMessage.split(':');
-      const plugin = plugins.find(p => p.id === pluginId.trim());
-      if (plugin) {
-        return await plugin.run(rest.join(':').trim());
+  // Replace simulateAIResponse with real ChatGPT API call
+  const chatGPTResponse = async (userMessage: string): Promise<string> => {
+    if (!OPENAI_API_KEY) {
+      return "[Error] OpenAI API key not set. Please set VITE_OPENAI_API_KEY in your .env file.";
+    }
+    try {
+      const response = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${OPENAI_API_KEY}`,
+        },
+        body: JSON.stringify({
+          model: "gpt-3.5-turbo",
+          messages: [
+            { role: "system", content: "You are Jarvis, an advanced AI assistant." },
+            ...messages.filter(m => m.type === 'user' || m.type === 'ai').map(m => ({
+              role: m.type === 'user' ? 'user' : 'assistant',
+              content: m.content,
+            })),
+            { role: "user", content: userMessage },
+          ],
+          max_tokens: 512,
+          temperature: 0.7,
+        }),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        return `[OpenAI Error] ${error.error?.message || response.statusText}`;
       }
-      return `Plugin not found. Available: ${plugins.map(p => p.id).join(', ')}`;
+      const data = await response.json();
+      return data.choices?.[0]?.message?.content?.trim() || "[No response from ChatGPT]";
+    } catch (err) {
+      return `[Network Error] ${err instanceof Error ? err.message : String(err)}`;
     }
-    // Simulate different AI capabilities based on message content
-    const lowerMessage = userMessage.toLowerCase();
-    if (lowerMessage.includes('blockchain') || lowerMessage.includes('crypto')) {
-      return `**Blockchain Analytics:**\nBased on current blockchain analytics, I've identified several trading opportunities. The market sentiment is currently **bullish** with a 78% confidence rate. Would you like me to execute any trades or provide detailed market analysis?`;
-    }
-    if (lowerMessage.includes('health') || lowerMessage.includes('medical')) {
-      return `**Medical AI:**\nI've analyzed the medical data. Based on the symptoms and parameters provided, my medical AI suggests scheduling a consultation. The risk assessment shows moderate attention needed. Shall I prepare a detailed health report?`;
-    }
-    if (lowerMessage.includes('business') || lowerMessage.includes('analytics')) {
-      return `**Business Intelligence:**\nBusiness intelligence analysis complete. Revenue is up 23% this quarter, with customer satisfaction at 94%. I've identified 3 key optimization opportunities that could increase efficiency by 15%. Would you like the detailed BI dashboard?`;
-    }
-    if (lowerMessage.includes('image') || lowerMessage.includes('vision')) {
-      return `**Computer Vision:**\nAnalysis complete. I've processed the images and identified 12 objects with 97% accuracy. The quality control system flagged 2 items for review. Shall I generate the detailed vision report?`;
-    }
-    // Default intelligent response
-    return `I understand you're asking about '${userMessage}'. I'm processing this through my neural networks and can provide comprehensive analysis including predictive modeling, natural language generation, and real-time insights. What specific aspect would you like me to focus on?`;
   };
 
   const handleSendMessage = async () => {
@@ -169,8 +181,9 @@ const JarvisAI = () => {
     setInputMessage('');
     setIsProcessing(true);
     try {
-      await new Promise(resolve => setTimeout(resolve, 1200));
-      const aiResponse = await simulateAIResponse(inputMessage);
+      await new Promise(resolve => setTimeout(resolve, 400));
+      // Use ChatGPT API instead of simulateAIResponse
+      const aiResponse = await chatGPTResponse(inputMessage);
       const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
         type: 'ai',
@@ -208,7 +221,7 @@ const JarvisAI = () => {
       setIsProcessing(true);
       try {
         await new Promise(resolve => setTimeout(resolve, 1000));
-        const aiResponse = await simulateAIResponse(messages[messages.length - 2]?.content || '');
+        const aiResponse = await chatGPTResponse(messages[messages.length - 2]?.content || '');
         setMessages(prev => prev.map(m => m.id === id ? { ...m, content: aiResponse, error: false } : m));
       } finally {
         setIsProcessing(false);
@@ -221,7 +234,7 @@ const JarvisAI = () => {
       setIsProcessing(true);
       try {
         await new Promise(resolve => setTimeout(resolve, 1000));
-        const aiResponse = await simulateAIResponse(lastUser.content);
+        const aiResponse = await chatGPTResponse(lastUser.content);
         setMessages(prev => [...prev, { id: Date.now() + '-regen', type: 'ai', content: aiResponse, timestamp: new Date() }]);
       } finally {
         setIsProcessing(false);
