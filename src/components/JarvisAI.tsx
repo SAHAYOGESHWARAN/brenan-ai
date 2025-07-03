@@ -297,7 +297,7 @@ const JarvisAI = () => {
               className="flex items-center gap-1 px-3 py-1 text-xs bg-slate-700 text-gray-200 rounded hover:bg-purple-700"
               aria-label="Download chat history"
             >
-              <Download className="w-4 h-4" /> Download Chat
+              <Download className="w-4 h-4" /> Download Chat and use 
             </button>
             <span className="text-xs text-gray-400 bg-slate-800 px-2 py-1 rounded">Context: {messages.length} messages</span>
           </div>
