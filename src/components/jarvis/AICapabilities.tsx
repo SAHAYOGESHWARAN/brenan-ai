@@ -3,7 +3,7 @@ import { Activity, Zap, ChevronDown, ChevronUp, ExternalLink } from "lucide-reac
 
 interface AICapabilityAction {
   label: string;
-  onClick: () => void;
+  onClick?: () => void; // Make onClick optional for link-only actions
   href?: string;
 }
 
